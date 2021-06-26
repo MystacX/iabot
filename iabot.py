@@ -25,10 +25,10 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 ### Checks if warnings file exists. If not, it creates a blank file
 warnings_exist = os.path.isfile('./warnings.csv')
 if warnings_exist:
-    print (f'warnings.csv already exists, reusing file. ')
+    print (f"warnings.csv already exists, reusing file. ")
     pass
 else:
-    print(f'warnings.csv does not exist. Creating blank .csv file. ')
+    print(f"warnings.csv does not exist. Creating blank .csv file.")
     open("warnings.csv", "w")
 
 
@@ -43,8 +43,8 @@ iamessage = f"Ascendance Internal affairs has sent you a message on the Goonswar
 async def on_ready():
     #await bot.change_presence(game=discord.Game(name='ASCEE.NET'))
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game(name='ASCEE.NET'))
-    print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nDiscord version: {discord.__version__}\n ')
-    print(f'Successfully logged in and booted...! ')
+    print(f"\n\nLogged in as: {bot.user.name} - {bot.user.id}\nDiscord version: {discord.__version__}\n ")
+    print(f"Successfully logged in and booted...!")
 
 
 #################################################
