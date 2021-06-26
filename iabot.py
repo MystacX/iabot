@@ -85,7 +85,7 @@ async def test(ctx):
     await sendwarn()
 
 
-### Cancel command // WIP
+### Cancel command // WIP1
 @bot.command(name='cancel', help='(RESTRICTED)(WIP) Removes a user from the active warnings.')
 @commands.has_any_role(*val_roles)
 async def status(ctx, c_user):
