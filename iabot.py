@@ -25,10 +25,10 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 ### Checks if warnings file exists. If not, it creates a blank file
 warnings_exist = os.path.isfile('./warnings.csv')
 if warnings_exist:
-    print (f'warnings.csv already exists, reusing file.')
+    print (f'warnings.csv already exists, reusing file. ')
     pass
 else:
-    print(f'warnings.csv does not exist. Creating blank .csv file.')
+    print(f'warnings.csv does not exist. Creating blank .csv file. ')
     open("warnings.csv", "w")
 
 
@@ -43,8 +43,8 @@ iamessage = f"Ascendance Internal affairs has sent you a message on the Goonswar
 async def on_ready():
     #await bot.change_presence(game=discord.Game(name='ASCEE.NET'))
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game(name='ASCEE.NET'))
-    print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nDiscord version: {discord.__version__}\n')
-    print(f'Successfully logged in and booted...!')
+    print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nDiscord version: {discord.__version__}\n ')
+    print(f'Successfully logged in and booted...! ')
 
 
 #################################################
@@ -53,25 +53,31 @@ async def on_ready():
 
 
 ### Warn command, allowing you to ping someone directly // WIP
-@bot.command(name='warn', help='(RESTRICTED)(WIP) Warns a user to contact IA through forum PM.')
-@commands.has_any_role(*val_roles) # Only accept commands from these roles
-async def dm(ctx, *d_user: discord.User): # Accepts multiple user tags
+@bot.command(name='warn', help='(RESTRICTED)(WIP) Warns a user to contact IA through forum PM. ')
+@commands.has_any_role(*val_roles)
+async def dm(ctx, *d_user: discord.User):
     time=48
-    if ctx.channel.name in iaval_channels: # only accept messages from valid channels
+    if ctx.channel.name in iaval_channels:
             for user in d_user:
+                with open('warnings.csv',"r") as readfile:
+                    for row in readfile:
+                        if user in row:
+                            await ctx.send (f"Already exists.")
+                            continue
                 await user.send(iamessage)
                 try:
-                    timestr = datetime.now()
-                    with open('warnings.csv', "w", newline  = '') as csvfile:
+                    now = datetime.now()
+                    with open('warnings.csv', "a", newline = '') as csvfile:
                         writer = csv.writer(csvfile, delimiter = ',')
-                        writer.writerows(zip({user}, {timestr}))
+                        fieldnames = user,now
+                        writer.writerow(fieldnames)
                         await ctx.send(f'Warning {user.name} for {time} hours.')
                 except: 
                     await ctx.send(f'Unable to write to warnings file. Warning only sent once. Please contact developer.')
     else:
         return
 
-async def sendwarn():
+async def sendwarn(): ### TEST // WIP
     with open("warnings.csv","r") as warningsfile:
         towarn = list(csv.reader(warningsfile))
     for row in towarn:
@@ -110,7 +116,7 @@ async def activewarnings(ctx):
             activewarnings = list(csv.reader(warnings))
             await ctx.send(f'Active warnings:')
             for awarn in activewarnings:
-                await ctx.send(f'{awarn[0]} - set on:{awarn[1]}\n')
+                await ctx.send(f'{awarn[0]} - set on: {awarn[1]}\n')
     else:
         return
 
