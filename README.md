@@ -155,12 +155,12 @@ Project Link: [https://github.com/mystacx/iabot](https://github.com/mystacx/iabo
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/mystacx/repo.svg?style=for-the-badge
-[contributors-url]: https://github.com/mystacx/repo/graphs/contributors
+[contributors-url]: https://github.com/mystacx/iabot/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/mystacx/repo.svg?style=for-the-badge
-[forks-url]: https://github.com/mystacx/repo/network/members
+[forks-url]: https://github.com/mystacx/iabot/network/members
 [stars-shield]: https://img.shields.io/github/stars/mystacx/repo.svg?style=for-the-badge
-[stars-url]: https://github.com/mystacx/repo/stargazers
+[stars-url]: https://github.com/mystacx/iabot/stargazers
 [issues-shield]: https://img.shields.io/github/issues/mystacx/repo.svg?style=for-the-badge
-[issues-url]: https://github.com/mystacx/repo/issues
+[issues-url]: https://github.com/mystacx/iabot/issues
 [license-shield]: https://img.shields.io/github/license/mystacx/repo.svg?style=for-the-badge
-[license-url]: https://github.com/mystacx/repo/blob/master/LICENSE.txt
+[license-url]: https://github.com/mystacx/iabot/blob/master/LICENSE.txt
