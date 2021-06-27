@@ -70,7 +70,7 @@ async def dm(ctx, *d_user: discord.User):
                         writer = csv.writer(csvfile, delimiter = ',')
                         fieldnames = user,now
                         writer.writerow(fieldnames)
-                        await ctx.send(f'Warning {user.name} for {time} hours.')
+                        await ctx.send(f'Warning {user.mention} for {time} hours.')
                 except: 
                     await ctx.send(f'Unable to write to warnings file. Warning only sent once. Please contact developer.')
     else:
