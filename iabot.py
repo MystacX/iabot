@@ -1,102 +1,133 @@
 # iabot.py
 
+### All the imports
+import discord
 import asyncio
 import os
-import discord
 import csv
-import schedule
 from datetime import datetime, timedelta
-from discord.ext import commands
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
+### load the .env file
+load_dotenv()
+
+### Set bot and client environments
 bot = commands.Bot(command_prefix='!')
 client = discord.Client()
 
+
+### Removes default help command
 bot.remove_command('help')
-load_dotenv()
 
+### Project variables
 TOKEN = os.getenv('DISCORD_TOKEN')
-
-warnings_exist = os.path.isfile('./warnings.csv')
-if warnings_exist:
-    print (f'warnings.csv already exists, reusing file.')
-    pass
-else:
-    print(f'warnings.csv does not exist. Creating blank .csv file.')
-    open("warnings.csv", "w")
-
+time_in_hours = 48
+timeformat = '%Y-%m-%d %H:%M:%S'
 iaval_channels = ('internal-affairs','ia')
 val_roles = ('IA Officer','Sub Director','Director','CEO')
 iamessage = f'Ascendance Internal affairs has sent you a message on the Goonswarm forums. \nPlease reply within 48 hours to prevent being kicked from corp. Click the link below to directly view your messages. \n\nhttps://goonfleet.com/index.php?app=members&module=messaging'
 
+### Intro stuff
+print (f"""                                              
+ _______   _____      _____    _____  _______ 
+(_______) (_____)    (_____)  (_____)(__ _ __)
+   (_)   (_)___(_)   (_)__(_)(_)   (_)  (_)   
+   (_)   (_______)   (_____) (_)   (_)  (_)   
+ __(_)__ (_)   (_)   (_)__(_)(_)___(_)  (_)   
+(_______)(_)   (_)   (_____)  (_____)   (_)   
+                                              
+                                              """)
+warnings_exist = os.path.isfile('./warnings.csv')
+if warnings_exist:
+    print (f'INFO: warnings.csv already exists, reusing file.')
+    pass
+else:
+    print(f'WARNING: warnings.csv does not exist. Creating blank .csv file.')
+    open("warnings.csv", "w")
+
+### Bot ready
 @bot.event
 async def on_ready():
-    await bot.change_presence(status=discord.Status.idle, activity=discord.Game(name='ASCEE.NET'))
-    print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nDiscord version: {discord.__version__}\n')
-    print(f'Successfully logged in and booted...!')
+    await bot.change_presence(status=discord.Status.online, activity=discord.Activity(type=discord.ActivityType.watching, name="your ESI data"))
+    print(f'INFO: Logged in as: {bot.user.name} - {bot.user.id}')
+    print(f'INFO: Discord version: {discord.__version__}')
+    print(f'INFO: Successfully logged in and booted...!')
 
-@bot.command(name='warn', help='(RESTRICTED)(WIP) Warns a user to contact IA through forum PM. ')
+### Warning command, will DM a target, and write to file
+@bot.command(name='warn', help='(RESTRICTED) Warns a user to contact IA through forum PM.')
 @commands.has_any_role(*val_roles)
-async def dm(ctx, *d_user: discord.User):
-    time=48
+async def dm(ctx, d_user: discord.User):
     if ctx.channel.name in iaval_channels:
-            for user in d_user:
-                with open('warnings.csv',"r") as readfile:
-                    for row in readfile:
-                        if user in row:
-                            await ctx.send (f"Already exists.")
-                            continue
-                await user.send(iamessage)
+        with open("warnings.csv", "r") as r:
+            now = datetime.now()
+            nowstr = now.strftime(timeformat)
+            if str(d_user).lower() in r.read().lower():
+                await ctx.send(f'{d_user} already exists in file.')
+            else:
+                await d_user.send(iamessage)
+                await ctx.send(f'Warning {d_user} for {time_in_hours} hours.')
                 try:
-                    now = datetime.now()
-                    with open('warnings.csv', "a", newline = '') as csvfile:
-                        writer = csv.writer(csvfile, delimiter = ',')
-                        fieldnames = user,now
-                        writer.writerow(fieldnames)
-                        await ctx.send(f'Warning {user.mention} for {time} hours.')
-                except: 
-                    await ctx.send(f'Unable to write to warnings file. Warning only sent once. Please contact developer.')
+                    with open("warnings.csv", "a") as a:
+                        a.write(f'{str(d_user).lower()},{d_user.id},{nowstr}\n')
+                except:
+                    await ctx.send(f'Unable to write to file. Warning only sent once.')
     else:
         return
 
-async def sendwarn():
+### Loop task, will send another warning every X hours until Y hours have passed.
+@tasks.loop(hours=12)
+async def sendwarns():
     with open("warnings.csv","r") as warningsfile:
         towarn = list(csv.reader(warningsfile))
     for row in towarn:
-        if datetime.now-row[1]:
-            await row[0].send(iamessage)
-schedule.every(12).hours.do(sendwarn)
+        user_to_warn = await bot.fetch_user(row[1])
+        dm_channel = user_to_warn.dm_channel
+        now = datetime.now()
+        rowtime = datetime.strptime(row[2], timeformat)
+        if now-timedelta(hours=48) <= rowtime <= now:
+            if dm_channel is None:
+                await user_to_warn.create_dm()
+                dm_channel = user_to_warn.dm_channel
+                await dm_channel.send(iamessage)
+            else:
+                await dm_channel.send(iamessage)
 
+sendwarns.start()
+
+### Test command. Test is next.
 @bot.command(name='test', help='test')
 async def test(ctx):
-    await sendwarn()
+    await ctx.send(f'Test is dead! FUCK YOU TEST')
 
+### Cancel command. Will remove a previously warned user from the warnings file.
 @bot.command(name='cancel', help='(RESTRICTED)(WIP) Removes a user from the active warnings.')
 @commands.has_any_role(*val_roles)
 async def status(ctx, c_user):
     if ctx.channel.name in iaval_channels:
-        with open("warnings.csv", "r") as f:
-            data = list(csv.reader(f))
-            with open("warnings.csv", "w") as f:
-                writer = csv.writer(f)
-                for row in data:
-                    if row[0] != c_user:
-                        writer.writerow(row)
+        with open("warnings.csv","r") as wf:
+            allwarns = list(csv.reader(wf))
+        for warn in allwarns:
+            if c_user not in str(warn):
+                with open("warnings.csv", "w") as wwf:
+                    wwf.write(str(warn))
     else:
         return
 
+### Active warnings command. Will list all the entries in the warnings file and output to channel.
 @bot.command(name='activewarnings', help='')
 @commands.has_any_role(*val_roles)
 async def activewarnings(ctx):
     if ctx.channel.name in iaval_channels:
         with open("warnings.csv", "r") as warnings:
             activewarnings = list(csv.reader(warnings))
-            await ctx.send(f'Active warnings:')
+            await ctx.send(f'**Active warnings:**')
             for awarn in activewarnings:
-                await ctx.send(f'{awarn[0]} - set on: {awarn[1]}\n')
+                await ctx.send(f'User: {awarn[0]} - with ID: {awarn[1]} - set on: {awarn[2]}')
     else:
         return
 
+### Reminder command. Will remind the author in the specified amount of time. No persistence.
 @bot.command(name='remind', help='Reminds you about a message. Supports "s", "m", "h", and "d".')
 async def remind(ctx, time, *, msg):
     time_conversion = {"s": 1, "m": 60, "h": 3600, "d": 86400}
@@ -105,6 +136,7 @@ async def remind(ctx, time, *, msg):
     await asyncio.sleep(remindertime)
     await ctx.send(f"Reminder from: {ctx.author.mention}: {msg}")
 
+### Custom help command.
 @bot.command(name='help', help='This command')
 @commands.has_any_role(*val_roles)
 async def help(ctx):
@@ -113,4 +145,5 @@ async def help(ctx):
     else:
         return
 
+### Run bot, run!
 bot.run(TOKEN)
