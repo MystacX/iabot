@@ -5,6 +5,8 @@ import discord
 import asyncio
 import os
 import csv
+import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -23,7 +25,7 @@ bot.remove_command('help')
 ### Project variables
 TOKEN = os.getenv('DISCORD_TOKEN')
 time_in_hours = 48
-timeformat = '%Y-%m-%d %H:%M:%S'
+timeformat = '%Y-%m-%d %H:%M'
 iaval_channels = ('internal-affairs','ia')
 val_roles = ('IA Officer','Sub Director','Director','CEO')
 iamessage = f'Ascendance Internal affairs has sent you a message on the Goonswarm forums. \nPlease reply within 48 hours to prevent being kicked from corp. Click the link below to directly view your messages. \n\nhttps://goonfleet.com/index.php?app=members&module=messaging'
@@ -69,7 +71,7 @@ async def dm(ctx, d_user: discord.User):
                 await ctx.send(f'Warning {d_user} for {time_in_hours} hours.')
                 try:
                     with open("warnings.csv", "a") as a:
-                        a.write(f'{str(d_user).lower()},{d_user.id},{nowstr}\n')
+                        a.write(f'{str(d_user).lower()},{d_user.id},{nowstr},{str(ctx.author.id)} \n')
                 except:
                     await ctx.send(f'Unable to write to file. Warning only sent once.')
     else:
@@ -103,14 +105,13 @@ async def test(ctx):
 ### Cancel command. Will remove a previously warned user from the warnings file.
 @bot.command(name='cancel', help='(RESTRICTED)(WIP) Removes a user from the active warnings.')
 @commands.has_any_role(*val_roles)
-async def status(ctx, c_user):
+async def cancel(ctx, c_user):
     if ctx.channel.name in iaval_channels:
-        with open("warnings.csv","r") as wf:
-            allwarns = list(csv.reader(wf))
-        for warn in allwarns:
-            if c_user not in str(warn):
-                with open("warnings.csv", "w") as wwf:
-                    wwf.write(str(warn))
+        df = pd.read_csv("warnings.csv", names=["User", "ID", "Time", "Author"])
+        #print(df)
+        for row in df:
+            ind = np.where((df['User']=={str(c_user)}) & (df[row[0]]=={str(c_user)}))
+            print(ind)
     else:
         return
 
@@ -123,7 +124,8 @@ async def activewarnings(ctx):
             activewarnings = list(csv.reader(warnings))
             await ctx.send(f'**Active warnings:**')
             for awarn in activewarnings:
-                await ctx.send(f'User: {awarn[0]} - with ID: {awarn[1]} - set on: {awarn[2]}')
+                warningowner = await bot.fetch_user(awarn[3])
+                await ctx.send(f'User: {awarn[0]} - set on: {awarn[2]} - by: {warningowner.mention}')
     else:
         return
 
