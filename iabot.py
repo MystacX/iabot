@@ -25,6 +25,7 @@ bot.remove_command('help')
 ### Project variables
 TOKEN = os.getenv('DISCORD_TOKEN')
 time_in_hours = 48
+remindertime = 12
 timeformat = '%Y-%m-%d %H:%M'
 iaval_channels = ('internal-affairs','ia')
 val_roles = ('IA Officer','Sub Director','Director','CEO')
@@ -68,7 +69,7 @@ async def dm(ctx, d_user: discord.User):
                 await ctx.send(f'{d_user} already exists in file.')
             else:
                 await d_user.send(iamessage)
-                await ctx.send(f'Warning {d_user} for {time_in_hours} hours.')
+                await ctx.send(f'Warning {d_user} for {time_in_hours} hours, every {remindertime} hours.')
                 try:
                     with open("warnings.csv", "a") as a:
                         a.write(f'{str(d_user).lower()},{d_user.id},{nowstr},{str(ctx.author.id)} \n')
@@ -78,7 +79,7 @@ async def dm(ctx, d_user: discord.User):
         return
 
 ### Loop task, will send another warning every X hours until Y hours have passed.
-@tasks.loop(hours=12)
+@tasks.loop(hours=remindertime)
 async def sendwarns():
     with open("warnings.csv","r") as warningsfile:
         towarn = list(csv.reader(warningsfile))
