@@ -5,8 +5,6 @@ import discord
 import asyncio
 import os
 import csv
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
@@ -17,7 +15,6 @@ load_dotenv()
 ### Set bot and client environments
 bot = commands.Bot(command_prefix='!')
 client = discord.Client()
-
 
 ### Removes default help command
 bot.remove_command('help')
@@ -39,12 +36,10 @@ print (f"""
    (_)   (_______)   (_____) (_)   (_)  (_)   
  __(_)__ (_)   (_)   (_)__(_)(_)___(_)  (_)   
 (_______)(_)   (_)   (_____)  (_____)   (_)   
-                                              
                                               """)
 warnings_exist = os.path.isfile('./warnings.csv')
 if warnings_exist:
     print (f'INFO: warnings.csv already exists, reusing file.')
-    pass
 else:
     print(f'WARNING: warnings.csv does not exist. Creating blank .csv file.')
     open("warnings.csv", "w")
@@ -68,13 +63,19 @@ async def dm(ctx, d_user: discord.User):
             if str(d_user).lower() in r.read().lower():
                 await ctx.send(f'{d_user} already exists in file.')
             else:
-                await d_user.send(iamessage)
+                try:
+                    await d_user.send(iamessage)
+                except: 
+                    await ctx.send(f'Error: Bot shit the bed.')
+                    return
                 await ctx.send(f'Warning {d_user} for {time_in_hours} hours, every {remindertime} hours.')
                 try:
-                    with open("warnings.csv", "a") as a:
-                        a.write(f'{str(d_user).lower()},{d_user.id},{nowstr},{str(ctx.author.id)} \n')
+                    with open("warnings.csv", "a", newline='') as a:
+                        aa = csv.writer(a, delimiter=',') 
+                        aa.writerow([f'{d_user}',f'{d_user.id}',f'{nowstr}'])
                 except:
                     await ctx.send(f'Unable to write to file. Warning only sent once.')
+                    return
     else:
         return
 
@@ -96,23 +97,29 @@ async def sendwarns():
             else:
                 await dm_channel.send(iamessage)
 
-sendwarns.start()
-
 ### Test command. Test is next.
 @bot.command(name='test', help='test')
 async def test(ctx):
     await ctx.send(f'Test is dead! FUCK YOU TEST')
 
 ### Cancel command. Will remove a previously warned user from the warnings file.
-@bot.command(name='cancel', help='(RESTRICTED)(WIP) Removes a user from the active warnings.')
+@bot.command(name='cancel', help='(RESTRICTED) Removes a user from the active warnings.')
 @commands.has_any_role(*val_roles)
-async def cancel(ctx, c_user):
+async def cancel(ctx, c_user: discord.User):
     if ctx.channel.name in iaval_channels:
-        df = pd.read_csv("warnings.csv", names=["User", "ID", "Time", "Author"])
-        #print(df)
-        for row in df:
-            ind = np.where((df['User']=={str(c_user)}) & (df[row[0]]=={str(c_user)}))
-            print(ind)
+        with open('warnings.csv') as warnfile:
+            newlines = []
+            for line in warnfile:
+                if (str(c_user) in line):
+                    continue
+                else:
+                    newlines.append(line)
+            with open('warnings.csv', 'w') as wwarnfile:
+                try: 
+                    wwarnfile.writelines(newlines)
+                    await ctx.send(f'{c_user} removed from file.')
+                except:
+                    await ctx.send(f'Error occurred during writing. Unable to remove {c_user}')
     else:
         return
 
@@ -125,8 +132,18 @@ async def activewarnings(ctx):
             activewarnings = list(csv.reader(warnings))
             await ctx.send(f'**Active warnings:**')
             for awarn in activewarnings:
-                warningowner = await bot.fetch_user(awarn[3])
-                await ctx.send(f'User: {awarn[0]} - set on: {awarn[2]} - by: {warningowner.mention}')
+                now = datetime.now()
+                rowtime = datetime.strptime(awarn[2], timeformat)
+                if now-timedelta(hours=48) <= rowtime <= now:
+                    try:
+                        await ctx.send(f'User: {awarn[0]} - set on: {awarn[2]}')
+                    except IndexError:
+                        continue
+                else:
+                    try:
+                        await ctx.send(f'User: {awarn[0]} - EXPIRED')
+                    except IndexError:
+                        continue
     else:
         return
 
@@ -147,6 +164,9 @@ async def help(ctx):
         await ctx.send(f'```Explanation of commands:\n\n**Status**: Will show you the username of the bot, and what server it is connected to. \n\**Warn**: Will warn a user via PM that they have received a message from IA.\n\n```')
     else:
         return
+
+### Run loops
+sendwarns.start()
 
 ### Run bot, run!
 bot.run(TOKEN)
