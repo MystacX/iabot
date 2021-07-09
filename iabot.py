@@ -7,13 +7,14 @@ import os
 import csv
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
+from discord.ext.commands.errors import CommandNotFound
 from dotenv import load_dotenv
 
 ### load the .env file
 load_dotenv()
 
 ### Set bot and client environments
-bot = commands.Bot(command_prefix='!')
+bot = commands.Bot(command_prefix='|')
 client = discord.Client()
 
 ### Removes default help command
@@ -21,8 +22,9 @@ bot.remove_command('help')
 
 ### Project variables
 TOKEN = os.getenv('DISCORD_TOKEN')
+runtime = datetime.now()
 time_in_hours = 48
-remindertime = 12
+remindertime = 4
 timeformat = '%Y-%m-%d %H:%M'
 iaval_channels = ('internal-affairs','ia')
 val_roles = ('IA Officer','Sub Director','Director','CEO')
@@ -50,7 +52,35 @@ async def on_ready():
     await bot.change_presence(status=discord.Status.online, activity=discord.Activity(type=discord.ActivityType.watching, name="your ESI data"))
     print(f'INFO: Logged in as: {bot.user.name} - {bot.user.id}')
     print(f'INFO: Discord version: {discord.__version__}')
-    print(f'INFO: Successfully logged in and booted...!')
+    print(f'INFO: Successfully logged in and booted at {runtime}')
+
+### Mute command
+@bot.command(name='mute', help="Mutes the specified user.")
+@commands.has_permissions(manage_messages=True)
+@commands.has_any_role(*val_roles)
+async def mute(ctx, member: discord.Member, *, reason=None):
+    guild = ctx.guild
+    mutedRole = discord.utils.get(guild.roles, name="Muted")
+    if not mutedRole:
+        mutedRole = await guild.create_role(name="Muted")
+        for channel in guild.channels:
+            await channel.set_permissions(mutedRole, speak=False, send_messages=False, read_message_history=True, read_messages=False)
+    embed = discord.Embed(title="Muted", description=f"{member.mention} was muted ", colour=discord.Colour.light_gray())
+    embed.add_field(name="Reason:", value=reason, inline=False)
+    await ctx.send(embed=embed)
+    await member.add_roles(mutedRole, reason=reason)
+    await member.send(f" you have been muted from: {guild.name} reason: {reason}")
+
+### Unmute command
+@bot.command(name='unmute', help="Unmutes a specified user.")
+@commands.has_permissions(manage_messages=True)
+@commands.has_any_role(*val_roles)
+async def unmute(ctx, member: discord.Member):
+   mutedRole = discord.utils.get(ctx.guild.roles, name="Muted")
+   await member.remove_roles(mutedRole)
+   await member.send(f"You have been unmuted from: {ctx.guild.name}")
+   embed = discord.Embed(title="Unmute", description=f"Unmuted: {member.mention}",colour=discord.Colour.light_gray())
+   await ctx.send(embed=embed)
 
 ### Warning command, will DM a target, and write to file
 @bot.command(name='warn', help='(RESTRICTED) Warns a user to contact IA through forum PM.')
@@ -63,11 +93,11 @@ async def dm(ctx, d_user: discord.User):
             if str(d_user).lower() in r.read().lower():
                 await ctx.send(f'{d_user} already exists in file.')
             else:
-                try:
-                    await d_user.send(iamessage)
-                except: 
-                    await ctx.send(f'Error: Bot shit the bed.')
-                    return
+                #try:
+                await d_user.send(iamessage)
+                #except: 
+                    #await ctx.send(f'Error: Bot shit the bed.')
+                    #return
                 await ctx.send(f'Warning {d_user} for {time_in_hours} hours, every {remindertime} hours.')
                 try:
                     with open("warnings.csv", "a", newline='') as a:
@@ -101,6 +131,13 @@ async def sendwarns():
 @bot.command(name='test', help='test')
 async def test(ctx):
     await ctx.send(f'Test is dead! FUCK YOU TEST')
+
+### Evetime command
+@bot.command(name='evetime', help='Current evetime')
+async def evetime(ctx):
+    current_time = datetime.utcnow()
+    evetime = current_time.strftime("%H:%M")
+    await ctx.send(evetime)
 
 ### Cancel command. Will remove a previously warned user from the warnings file.
 @bot.command(name='cancel', help='(RESTRICTED) Removes a user from the active warnings.')
