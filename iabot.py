@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ### Set bot and client environments
-bot = commands.Bot(command_prefix='|')
+bot = commands.Bot(command_prefix='!')
 client = discord.Client()
 
 ### Removes default help command
